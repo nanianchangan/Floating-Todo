@@ -1,0 +1,5 @@
+.build/
+FloatingTodo.app/
+.DS_Store
+.swiftpm/
+

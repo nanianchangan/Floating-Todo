@@ -1,0 +1,41 @@
+{
+  "archive" : [
+    {
+      "completedAt" : "2026-08-17T10:30:00Z",
+      "createdAt" : "2026-08-17T08:10:00Z",
+      "id" : "8A8EB3AA-4C7D-405F-9988-58D9161354D2",
+      "text" : "检查菜单栏入口"
+    },
+    {
+      "completedAt" : "2026-08-17T09:20:00Z",
+      "createdAt" : "2026-08-17T07:45:00Z",
+      "id" : "C0738183-B0DF-4366-A194-4605E17002E5",
+      "text" : "调整悬浮窗尺寸"
+    },
+    {
+      "completedAt" : "2026-08-16T11:00:00Z",
+      "createdAt" : "2026-08-16T08:30:00Z",
+      "id" : "91800504-610B-418C-81CB-4BD3F5CD7D8D",
+      "text" : "修复窗口位置记忆"
+    }
+  ],
+  "items" : [
+    {
+      "completedAt" : "2026-08-18T14:20:10Z",
+      "createdAt" : "2026-08-18T14:20:03Z",
+      "id" : "ECA95AF6-1D37-4EA2-826B-E0F0218FD244",
+      "text" : "核对发布文案"
+    },
+    {
+      "createdAt" : "2026-08-18T14:20:02Z",
+      "id" : "F2AA10F0-9B40-4D54-B04C-B41579B4D3DF",
+      "text" : "等待 App 构建结果"
+    },
+    {
+      "createdAt" : "2026-08-18T14:20:01Z",
+      "id" : "7BB3B4A5-D26D-4B20-9BDE-7BF677B49513",
+      "text" : "修改 Floating Todo 的小红书分享图"
+    }
+  ],
+  "version" : 1
+}
