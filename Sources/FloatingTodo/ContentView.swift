@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showHistory = false
     @State private var selectedArchiveDay: Date?
     @State private var pendingArchiveDeletion: TodoItem?
+    @State private var dropPosition: TodoDropPosition?
 
     private let panelWidth: CGFloat = 260
     private let maxListHeight: CGFloat = 380
@@ -243,8 +244,26 @@ struct ContentView: View {
                     item: item,
                     onToggle: { store.toggle(item) },
                     onArchive: { store.archiveItem(item) },
-                    onDelete: { store.delete(item) }
+                    onDelete: { store.delete(item) },
+                    onDropPosition: { after in
+                        dropPosition = after.map { TodoDropPosition(itemID: item.id, after: $0) }
+                    },
+                    onDrop: { source, after in
+                        store.move(itemID: source, relativeTo: item.id, after: after)
+                    },
+                    onDragEnd: {
+                        dropPosition = nil
+                    }
                 )
+                .overlay(alignment: dropPosition?.after == true ? .bottom : .top) {
+                    if dropPosition?.itemID == item.id {
+                        Rectangle()
+                            .fill(Color.accentColor)
+                            .frame(height: 2)
+                            .padding(.horizontal, 12)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .background(GeometryReader { geometry in
                     Color.clear.preference(
                         key: TodoRowHeightsKey.self,
@@ -383,6 +402,9 @@ private struct TodoRow: View {
     let onToggle: () -> Void
     let onArchive: () -> Void
     let onDelete: () -> Void
+    let onDropPosition: (Bool?) -> Void
+    let onDrop: (UUID, Bool) -> Void
+    let onDragEnd: () -> Void
 
     @State private var hovering = false
 
@@ -397,12 +419,17 @@ private struct TodoRow: View {
             }
             .buttonStyle(.plain)
 
-            Text(item.text)
-                .strikethrough(isDone)
-                .foregroundStyle(isDone ? Color.secondary : Color.primary)
-                .lineLimit(3)
-
-            Spacer(minLength: 0)
+            HStack(spacing: 0) {
+                Text(item.text)
+                    .strikethrough(isDone)
+                    .foregroundStyle(isDone ? Color.secondary : Color.primary)
+                    .lineLimit(3)
+                Spacer(minLength: 0)
+            }
+            .overlay {
+                TodoDragSource(item: item, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
+                    .padding(.vertical, -5)
+            }
 
             if hovering {
                 if isDone {

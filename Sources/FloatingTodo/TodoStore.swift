@@ -89,6 +89,20 @@ final class TodoStore: ObservableObject {
         save()
     }
 
+    /// 落点基于目标条目定位，移除来源后再计算插入索引。
+    func move(itemID: UUID, relativeTo targetID: UUID, after: Bool) {
+        guard itemID != targetID,
+              let source = items.firstIndex(where: { $0.id == itemID }),
+              let target = items.firstIndex(where: { $0.id == targetID }) else { return }
+        let insertion = target + (after ? 1 : 0) - (source < target ? 1 : 0)
+        guard insertion != source else { return }
+        var reordered = items
+        let item = reordered.remove(at: source)
+        reordered.insert(item, at: insertion)
+        items = reordered
+        save()
+    }
+
     /// 用户主动删除：物理移除，不进归档
     func delete(_ item: TodoItem) {
         items.removeAll { $0.id == item.id }
