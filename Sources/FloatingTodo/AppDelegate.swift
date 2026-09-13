@@ -9,6 +9,7 @@ final class FloatingPanel: NSPanel {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // lazy：单实例检测通过之前不触碰数据文件
     private lazy var store = TodoStore()
+    private lazy var displaySettings = TodoDisplaySettings()
     private var panel: FloatingPanel?
     private var statusItem: NSStatusItem?
     // 保存 block 版 addObserver 返回的 token，否则观察者无法移除
@@ -92,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         effect.state = .active
         let rootView = ContentView(
             store: store,
+            displaySettings: displaySettings,
             onClose: { [weak self] in self?.panel?.orderOut(nil) },
             onHeightChange: { [weak self] height in self?.setPanelContentHeight(height) }
         )
@@ -183,6 +185,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let history = NSMenuItem(title: "查看收档历史", action: #selector(toggleHistory), keyEquivalent: "")
         history.target = self
         menu.addItem(history)
+        let visibleItems = NSMenuItem(title: "待办显示条数…", action: #selector(editVisibleItemLimit), keyEquivalent: "")
+        visibleItems.target = self
+        menu.addItem(visibleItems)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "退出 FloatingTodo", action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
@@ -226,5 +231,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+
+    @objc private func editVisibleItemLimit() {
+        let alert = NSAlert()
+        alert.messageText = "待办显示条数"
+        let hint = "最多显示几条待办；留空显示全部。窗口仍保留当前高度上限，超出可滚动查看。"
+        alert.informativeText = hint
+        alert.addButton(withTitle: "确定")
+        alert.addButton(withTitle: "取消")
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = "全部"
+        input.stringValue = displaySettings.limit.map(String.init) ?? ""
+        input.setAccessibilityLabel("最多显示的待办条数，留空显示全部")
+        alert.accessoryView = input
+        alert.window.initialFirstResponder = input
+        NSApp.activate(ignoringOtherApps: true)
+        while alert.runModal() == .alertFirstButtonReturn {
+            if displaySettings.save(input.stringValue) { return }
+            alert.informativeText = "请输入正整数，或留空显示全部。\n\n" + hint
+            alert.window.makeFirstResponder(input)
+        }
     }
 }

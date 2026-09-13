@@ -2,18 +2,37 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var store: TodoStore
+    @ObservedObject var displaySettings: TodoDisplaySettings
     var onClose: () -> Void = { }
     var onHeightChange: (CGFloat) -> Void = { _ in }
 
     @State private var draft = ""
     @State private var headerHeight: CGFloat = 0
     @State private var listHeight: CGFloat = 0
+    @State private var rowHeights: [UUID: CGFloat] = [:]
     @State private var showHistory = false
     @State private var selectedArchiveDay: Date?
     @State private var pendingArchiveDeletion: TodoItem?
 
     private let panelWidth: CGFloat = 260
     private let maxListHeight: CGFloat = 380
+
+    private var viewportHeight: CGFloat {
+        if showHistory || displaySettings.limit == nil {
+            return min(max(listHeight, 0), maxListHeight)
+        }
+        let visibleItems = store.items.prefix(displaySettings.limit ?? store.items.count)
+        // Use the measured content until every requested row has completed layout.
+        guard visibleItems.allSatisfy({ rowHeights[$0.id] != nil }) else {
+            return min(max(listHeight, 0), maxListHeight)
+        }
+        return TodoDisplaySettings.viewportHeight(
+            rowHeights: visibleItems.compactMap { rowHeights[$0.id] },
+            limit: displaySettings.limit
+        )
+    }
+
+    private var panelHeight: CGFloat { headerHeight + viewportHeight }
 
     private var archiveDays: [ArchiveDay] {
         ArchiveHistory.days(from: store.archive)
@@ -43,17 +62,22 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(HeightReader { height in
                     listHeight = height
-                    reportPanelHeight(headerHeight: headerHeight, listHeight: height)
                 })
             }
             // 模式或日期切换时重建 ScrollView，避免沿用上一页的滚动偏移
             .id(ScrollContentID(
                 showHistory: showHistory,
-                archiveDay: showHistory ? selectedArchive?.day.day : nil
+                archiveDay: showHistory ? selectedArchive?.day.day : nil,
+                settingsRevision: showHistory ? 0 : displaySettings.revision
             ))
-            .frame(height: min(max(listHeight, 0), maxListHeight))
+            .frame(height: viewportHeight)
         }
         .frame(width: panelWidth)
+        .onPreferenceChange(TodoRowHeightsKey.self) { rowHeights = $0 }
+        .onChange(of: panelHeight, initial: true) { _, height in
+            guard headerHeight > 0 else { return }
+            onHeightChange(height)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .floatingTodoToggleHistory)) { _ in
             listHeight = 0
             showHistory.toggle()
@@ -165,7 +189,6 @@ struct ContentView: View {
         .fixedSize(horizontal: false, vertical: true)
         .background(HeightReader { height in
             headerHeight = height
-            reportPanelHeight(headerHeight: height, listHeight: listHeight)
         })
     }
 
@@ -213,11 +236,6 @@ struct ContentView: View {
         }
     }
 
-    private func reportPanelHeight(headerHeight: CGFloat, listHeight: CGFloat) {
-        guard headerHeight > 0 else { return }
-        onHeightChange(headerHeight + min(max(listHeight, 0), maxListHeight))
-    }
-
     @ViewBuilder private var listContent: some View {
         VStack(spacing: 0) {
             ForEach(store.items) { item in
@@ -227,6 +245,12 @@ struct ContentView: View {
                     onArchive: { store.archiveItem(item) },
                     onDelete: { store.delete(item) }
                 )
+                .background(GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: TodoRowHeightsKey.self,
+                        value: [item.id: geometry.size.height]
+                    )
+                })
             }
         }
         // 空列表时不留内边距，列表区高度归零
@@ -295,6 +319,14 @@ struct ContentView: View {
 private struct ScrollContentID: Hashable {
     let showHistory: Bool
     let archiveDay: Date?
+    let settingsRevision: Int
+}
+
+private struct TodoRowHeightsKey: PreferenceKey {
+    static let defaultValue: [UUID: CGFloat] = [:]
+    static func reduce(value: inout [UUID: CGFloat], nextValue: () -> [UUID: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
 }
 
 extension Notification.Name {
