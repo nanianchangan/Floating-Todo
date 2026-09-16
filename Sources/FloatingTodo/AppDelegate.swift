@@ -9,6 +9,8 @@ final class FloatingPanel: NSPanel {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // lazy：单实例检测通过之前不触碰数据文件
     private lazy var store = TodoStore()
+    private lazy var pomodoro = PomodoroStore(todoStore: store)
+    private var sleepObserver: NSObjectProtocol?
     private lazy var displaySettings = TodoDisplaySettings()
     private var panel: FloatingPanel?
     private var statusItem: NSStatusItem?
@@ -38,10 +40,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.store.archiveOldCompleted()
             })
         }
+        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.pomodoro.prepareForSleep()
+        }
         showPanel()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        pomodoro.end()
+    }
+
     deinit {
+        if let sleepObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver)
+        }
         rearchiveObservers.forEach(NotificationCenter.default.removeObserver(_:))
     }
 
@@ -93,6 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         effect.state = .active
         let rootView = ContentView(
             store: store,
+            pomodoro: pomodoro,
             displaySettings: displaySettings,
             onClose: { [weak self] in self?.panel?.orderOut(nil) },
             onHeightChange: { [weak self] height in self?.setPanelContentHeight(height) }

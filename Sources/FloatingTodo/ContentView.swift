@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var store: TodoStore
+    @ObservedObject var pomodoro: PomodoroStore
     @ObservedObject var displaySettings: TodoDisplaySettings
     var onClose: () -> Void = { }
     var onHeightChange: (CGFloat) -> Void = { _ in }
@@ -242,6 +243,7 @@ struct ContentView: View {
             ForEach(store.items) { item in
                 TodoRow(
                     item: item,
+                    pomodoro: pomodoro,
                     onToggle: { store.toggle(item) },
                     onArchive: { store.archiveItem(item) },
                     onDelete: { store.delete(item) },
@@ -399,6 +401,7 @@ private struct ArchiveRow: View {
 
 private struct TodoRow: View {
     let item: TodoItem
+    @ObservedObject var pomodoro: PomodoroStore
     let onToggle: () -> Void
     let onArchive: () -> Void
     let onDelete: () -> Void
@@ -410,8 +413,10 @@ private struct TodoRow: View {
 
     private var isDone: Bool { item.completedAt != nil }
 
+    private var isFocusing: Bool { pomodoro.taskID == item.id }
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Button(action: onToggle) {
                 Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 15))
@@ -419,37 +424,74 @@ private struct TodoRow: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 0) {
-                Text(item.text)
-                    .strikethrough(isDone)
-                    .foregroundStyle(isDone ? Color.secondary : Color.primary)
-                    .lineLimit(3)
-                Spacer(minLength: 0)
-            }
-            .overlay {
-                TodoDragSource(item: item, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
-                    .padding(.vertical, -5)
-            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 0) {
+                        Text(item.text)
+                            .strikethrough(isDone)
+                            .foregroundStyle(isDone ? Color.secondary : Color.primary)
+                            .lineLimit(3)
+                        Spacer(minLength: 0)
+                    }
+                    .overlay {
+                        TodoDragSource(item: item, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
+                    }
 
-            if hovering {
-                if isDone {
-                    Button(action: onArchive) {
-                        Image(systemName: "archivebox")
-                            .foregroundStyle(.secondary)
+                    if !isDone && (hovering || isFocusing) {
+                        Button { pomodoro.start(taskID: item.id) } label: {
+                            Image(systemName: "timer")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(pomodoro.phase != .idle)
+                        .help(isFocusing ? "当前专注任务" : pomodoro.startHelp)
+                        .accessibilityLabel(isFocusing ? "当前专注任务" : "开始专注")
+                    }
+                    if hovering {
+                        if isDone {
+                            Button(action: onArchive) {
+                                Image(systemName: "archivebox")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("收档这条")
+                        }
+                        Button(action: onDelete) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("删除这条")
+                    }
+                }
+
+                if isFocusing {
+                    HStack(spacing: 12) {
+                        Text(pomodoro.timeText)
+                            .monospacedDigit()
+                            .accessibilityLabel("剩余时间 \(pomodoro.timeText)")
+                        if pomodoro.phase == .finished {
+                            Button("再来一轮") { pomodoro.restart() }
+                            Button("收起") { pomodoro.dismiss() }
+                        } else {
+                            Button(pomodoro.phase == .paused ? "继续" : "暂停") {
+                                if pomodoro.phase == .paused { pomodoro.resume() }
+                                else { pomodoro.pause() }
+                            }
+                            Button("结束") { pomodoro.end() }
+                        }
                     }
                     .buttonStyle(.plain)
-                    .help("收档这条")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
                 }
-                Button(action: onDelete) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("删除这条")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
+        .background {
+            TodoDropTarget(item: item, onPosition: onDropPosition, onDrop: onDrop)
+        }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
     }

@@ -19,7 +19,6 @@ struct TodoDragSource: NSViewRepresentable {
 
     func makeNSView(context: Context) -> TodoDragView {
         let view = TodoDragView()
-        view.registerForDraggedTypes([NSPasteboard.PasteboardType(todoDragType.identifier)])
         return view
     }
 
@@ -31,7 +30,33 @@ struct TodoDragSource: NSViewRepresentable {
     }
 }
 
+/// A drop-only background covers the entire expanded row without intercepting clicks.
+struct TodoDropTarget: NSViewRepresentable {
+    let item: TodoItem
+    let onPosition: (Bool?) -> Void
+    let onDrop: (UUID, Bool) -> Void
+
+    func makeNSView(context: Context) -> TodoDragView {
+        let view = TodoDragView()
+        view.isDropOnly = true
+        view.registerForDraggedTypes([NSPasteboard.PasteboardType(todoDragType.identifier)])
+        return view
+    }
+
+    func updateNSView(_ view: TodoDragView, context: Context) {
+        view.item = item
+        view.onPosition = onPosition
+        view.onDrop = onDrop
+    }
+}
+
 final class TodoDragView: NSView, NSDraggingSource {
+    var isDropOnly = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        isDropOnly ? nil : super.hitTest(point)
+    }
+
     var item: TodoItem?
     var onPosition: (Bool?) -> Void = { _ in }
     var onDrop: (UUID, Bool) -> Void = { _, _ in }

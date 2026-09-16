@@ -8,7 +8,7 @@ mkdir -p "$MODULE_CACHE"
 env \
   CLANG_MODULE_CACHE_PATH="$MODULE_CACHE" \
   SWIFTPM_MODULECACHE_OVERRIDE="$MODULE_CACHE" \
-  swift build --disable-sandbox -c release
+  swift build --disable-sandbox --build-system native -c release "$@"
 
 APP="FloatingTodo.app"
 BIN=".build/release/FloatingTodo"
