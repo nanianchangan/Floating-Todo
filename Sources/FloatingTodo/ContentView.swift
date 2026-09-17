@@ -245,6 +245,7 @@ struct ContentView: View {
                     item: item,
                     pomodoro: pomodoro,
                     onToggle: { store.toggle(item) },
+                    onToggleFocus: { store.toggleFocus(item) },
                     onArchive: { store.archiveItem(item) },
                     onDelete: { store.delete(item) },
                     onDropPosition: { after in
@@ -369,6 +370,14 @@ private struct ArchiveRow: View {
 
             Spacer(minLength: 4)
 
+            if item.archivedFocus == true {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color(red: 0.76, green: 0.56, blue: 0.18))
+                    .accessibilityLabel("收档时的重点任务")
+                    .help("收档时的重点任务")
+            }
+
             HStack(spacing: 6) {
                 Button(action: onRestore) {
                     Image(systemName: "arrow.uturn.backward")
@@ -403,6 +412,7 @@ private struct TodoRow: View {
     let item: TodoItem
     @ObservedObject var pomodoro: PomodoroStore
     let onToggle: () -> Void
+    let onToggleFocus: () -> Void
     let onArchive: () -> Void
     let onDelete: () -> Void
     let onDropPosition: (Bool?) -> Void
@@ -435,6 +445,23 @@ private struct TodoRow: View {
                     }
                     .overlay {
                         TodoDragSource(item: item, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
+                    }
+
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        let focused = item.isFocused(on: context.date)
+                        Button(action: onToggleFocus) {
+                            Image(systemName: focused ? "star.fill" : "star")
+                                .font(.system(size: 13))
+                                .foregroundStyle(focused
+                                    ? Color(red: 0.76, green: 0.56, blue: 0.18)
+                                    : Color.secondary)
+                                .opacity(isDone ? 0.65 : 1)
+                                .frame(width: 18, height: 18)
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(focused || hovering ? 1 : 0)
+                        .help(focused ? "取消今日重点" : "标为今日重点（仅当天有效）")
+                        .accessibilityLabel(focused ? "取消今日重点" : "标为今日重点")
                     }
 
                     if !isDone && (hovering || isFocusing) {

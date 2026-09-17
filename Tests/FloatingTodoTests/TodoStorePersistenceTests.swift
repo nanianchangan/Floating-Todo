@@ -72,7 +72,7 @@ final class TodoStorePersistenceTests {
         let object = try #require(
             try JSONSerialization.jsonObject(with: data) as? [String: Any]
         )
-        #expect(object["version"] as? Int == 1)
+        #expect(object["version"] as? Int == 2)
     }
 
     @Test func firstSaveOfDayBacksUpExistingDataBeforeOverwrite() throws {

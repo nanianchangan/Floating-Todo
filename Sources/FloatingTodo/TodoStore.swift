@@ -6,6 +6,12 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var text: String
     var createdAt: Date
     var completedAt: Date?
+    var focusDate: Date?
+    var archivedFocus: Bool?
+
+    func isFocused(on date: Date) -> Bool {
+        focusDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false
+    }
 
     init(text: String) {
         self.id = UUID()
@@ -21,7 +27,7 @@ final class TodoStore: ObservableObject {
 
     private struct FileData: Codable {
         /// 当前存储格式版本；以后字段变更时递增并做迁移
-        static let currentVersion = 1
+        static let currentVersion = 2
 
         var version: Int
         var items: [TodoItem]
@@ -43,6 +49,7 @@ final class TodoStore: ObservableObject {
     }
 
     private let fileURL: URL
+    private let now: () -> Date
 
     /// 数据文件损坏且备份失败时置 false，禁止 save 覆盖仅存的原始数据
     private(set) var isSaveAllowed = true
@@ -58,12 +65,14 @@ final class TodoStore: ObservableObject {
 
     init() {
         self.fileURL = Self.defaultFileURL()
+        self.now = Date.init
         prepareStorageAndLoad()
     }
 
     /// 测试使用独立文件，避免读写真实用户数据。
-    init(fileURL: URL) {
+    init(fileURL: URL, now: @escaping () -> Date = Date.init) {
         self.fileURL = fileURL
+        self.now = now
         prepareStorageAndLoad()
     }
 
@@ -85,8 +94,21 @@ final class TodoStore: ObservableObject {
 
     func toggle(_ item: TodoItem) {
         guard let i = items.firstIndex(where: { $0.id == item.id }) else { return }
-        items[i].completedAt = items[i].completedAt == nil ? Date() : nil
+        items[i].completedAt = items[i].completedAt == nil ? now() : nil
         save()
+    }
+
+    func toggleFocus(_ item: TodoItem) {
+        guard let i = items.firstIndex(where: { $0.id == item.id }) else { return }
+        let date = now()
+        items[i].focusDate = items[i].isFocused(on: date) ? nil : date
+        save()
+    }
+
+    private func archivedSnapshot(_ item: TodoItem, on date: Date) -> TodoItem {
+        var snapshot = item
+        snapshot.archivedFocus = item.isFocused(on: date)
+        return snapshot
     }
 
     /// 落点基于目标条目定位，移除来源后再计算插入索引。
@@ -113,7 +135,7 @@ final class TodoStore: ObservableObject {
     func archiveItem(_ item: TodoItem) {
         guard let i = items.firstIndex(where: { $0.id == item.id }),
               items[i].completedAt != nil else { return }
-        archive.append(items[i])
+        archive.append(archivedSnapshot(items[i], on: now()))
         items.remove(at: i)
         save()
     }
@@ -122,7 +144,7 @@ final class TodoStore: ObservableObject {
     func archiveCompleted() {
         let done = items.filter { $0.completedAt != nil }
         guard !done.isEmpty else { return }
-        archive.append(contentsOf: done)
+        archive.append(contentsOf: done.map { archivedSnapshot($0, on: now()) })
         items.removeAll { $0.completedAt != nil }
         save()
     }
@@ -132,6 +154,8 @@ final class TodoStore: ObservableObject {
         guard let index = archive.firstIndex(where: { $0.id == item.id }) else { return }
         var restored = archive.remove(at: index)
         restored.completedAt = nil
+        restored.focusDate = nil
+        restored.archivedFocus = nil
         let insertionIndex = items.firstIndex { $0.createdAt < restored.createdAt }
             ?? items.endIndex
         items.insert(restored, at: insertionIndex)
@@ -147,15 +171,22 @@ final class TodoStore: ObservableObject {
 
     /// 把「完成日早于今天」的条目从 items 移入 archive（按自然日判断）
     func archiveOldCompleted() {
-        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let today = now()
+        let startOfToday = Calendar.current.startOfDay(for: today)
         var moved = false
         var remaining: [TodoItem] = []
         for item in items {
             if let done = item.completedAt, done < startOfToday {
-                archive.append(item)
+                // 自动收档保留完成当天的重点，避免午夜重置丢失历史。
+                archive.append(archivedSnapshot(item, on: done))
                 moved = true
             } else {
-                remaining.append(item)
+                var current = item
+                if current.focusDate != nil && !current.isFocused(on: today) {
+                    current.focusDate = nil
+                    moved = true
+                }
+                remaining.append(current)
             }
         }
         if moved {

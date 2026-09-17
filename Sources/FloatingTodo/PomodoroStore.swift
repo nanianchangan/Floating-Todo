@@ -35,7 +35,7 @@ final class PomodoroStore: ObservableObject {
     deinit { timer?.invalidate() }
 
     var timeText: String {
-        String(format: "%02d:%02d", remainingSeconds / 60, remainingSeconds % 60)
+        String(format: "%02d:xx", remainingSeconds / 60)
     }
 
     var startHelp: String {

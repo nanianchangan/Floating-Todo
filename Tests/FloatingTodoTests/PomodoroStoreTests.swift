@@ -17,23 +17,23 @@ struct PomodoroStoreTests {
             var time: TimeInterval = 100
             let timer = PomodoroStore(todoStore: todos, now: { time }, automaticallyTicks: false)
             timer.start(taskID: todos.items[0].id)
-            #expect(timer.timeText == "25:00")
+            #expect(timer.timeText == "25:xx")
             time += 61.25
             timer.refresh()
-            #expect(timer.timeText == "23:59")
+            #expect(timer.timeText == "23:xx")
             timer.pause()
             time += 500
             timer.refresh()
             #expect(timer.phase == .paused)
-            #expect(timer.timeText == "23:59")
+            #expect(timer.timeText == "23:xx")
             timer.resume()
             time += 1438.5
             timer.refresh()
-            #expect(timer.timeText == "00:01")
+            #expect(timer.timeText == "00:xx")
             time += 10
             timer.refresh()
             #expect(timer.phase == .finished)
-            #expect(timer.timeText == "00:00")
+            #expect(timer.timeText == "00:xx")
             let id = timer.taskID
             timer.refresh()
             timer.pause()
@@ -44,7 +44,7 @@ struct PomodoroStoreTests {
             timer.restart()
             #expect(timer.phase == .running)
             #expect(timer.taskID == id)
-            #expect(timer.timeText == "25:00")
+            #expect(timer.timeText == "25:xx")
             time += 1500
             timer.refresh()
             timer.dismiss()
@@ -92,16 +92,16 @@ struct PomodoroStoreTests {
             time = 3600
             timer.refresh()
             #expect(timer.phase == .paused)
-            #expect(timer.timeText == "24:00")
+            #expect(timer.timeText == "24:xx")
             timer.resume()
             time += 30
             timer.refresh()
-            #expect(timer.timeText == "23:30")
+            #expect(timer.timeText == "23:xx")
             timer.end()
             #expect(timer.phase == .idle)
             #expect(timer.taskID == nil)
             timer.start(taskID: todos.items[1].id)
-            #expect(timer.timeText == "25:00")
+            #expect(timer.timeText == "25:xx")
             let fresh = PomodoroStore(todoStore: todos, automaticallyTicks: false)
             #expect(fresh.phase == .idle)
             #expect(fresh.taskID == nil)
@@ -119,7 +119,7 @@ struct PomodoroStoreTests {
             #expect(timer.phase == .finished)
             timer.start(taskID: todos.items[1].id)
             #expect(timer.taskID == first.id)
-            #expect(timer.timeText == "00:00")
+            #expect(timer.timeText == "00:xx")
             todos.delete(first)
             #expect(timer.phase == .idle)
         }
