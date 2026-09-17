@@ -15,4 +15,26 @@ Floating Todo 因此而生——一个始终置顶的「当前工作栈」，它
 <img width="200"  alt="E383A4EE-5C0B-4500-9A25-72618F7E4861_1_105_c" src="https://github.com/user-attachments/assets/161ccfa2-0770-4510-bdda-99a325d78284" />
 <img width="200"  alt="855E3FBD-3124-4187-88E2-2BCA40F25551_1_105_c" src="https://github.com/user-attachments/assets/3199c2ed-e8b0-4d37-ac2a-4f3157b32c25" />
 
+## 09.17 新特性
 
+### ⭐ 今日重点
+
+为重要任务标上星，提醒自己优先投入。标记仅当天有效，每天重新聚焦。
+
+<img width="260" alt="今日重点：任务右侧显示金色星标" src="docs/images/0917/today-focus.png" />
+
+### 🍅 番茄钟
+
+为一条待办开启 25 分钟专注，支持暂停、继续和提前结束，计时完成后可再来一轮。
+
+<img width="260" alt="番茄钟：任务下方显示计时、暂停和结束按钮" src="docs/images/0917/pomodoro.png" />
+
+### 📝 自定义显示条数
+
+在菜单栏的「待办显示条数…」中，设置窗口最多展示几条待办。留空显示全部；窗口仍保留高度上限，超出部分可滚动查看。
+
+<img width="332" alt="待办显示条数设置：示例设置为 3 条" src="docs/images/0917/visible-item-limit.png" />
+
+### ↕️ 拖拽排序
+
+拖动待办即可调整顺序，让清单跟上当前的优先级。
