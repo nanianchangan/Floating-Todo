@@ -13,6 +13,7 @@ struct TodoDropPosition: Equatable {
 /// 显式禁止背景移动，避免 NSPanel 把行拖动当作窗口拖动。
 struct TodoDragSource: NSViewRepresentable {
     let item: TodoItem
+    let onEdit: () -> Void
     let onPosition: (Bool?) -> Void
     let onDrop: (UUID, Bool) -> Void
     let onEnd: () -> Void
@@ -24,6 +25,7 @@ struct TodoDragSource: NSViewRepresentable {
 
     func updateNSView(_ view: TodoDragView, context: Context) {
         view.item = item
+        view.onEdit = onEdit
         view.onPosition = onPosition
         view.onDrop = onDrop
         view.onEnd = onEnd
@@ -58,6 +60,7 @@ final class TodoDragView: NSView, NSDraggingSource {
     }
 
     var item: TodoItem?
+    var onEdit: () -> Void = {}
     var onPosition: (Bool?) -> Void = { _ in }
     var onDrop: (UUID, Bool) -> Void = { _, _ in }
     var onEnd: () -> Void = {}
@@ -71,6 +74,12 @@ final class TodoDragView: NSView, NSDraggingSource {
     }
 
     override func mouseUp(with event: NSEvent) { pressPoint = nil }
+
+    override func rightMouseDown(with event: NSEvent) {
+        pressPoint = nil
+        window?.makeKey()
+        onEdit()
+    }
 
     override func mouseDragged(with event: NSEvent) {
         guard let origin = pressPoint, let item,

@@ -21,6 +21,22 @@ final class TodoStorePersistenceTests {
         try? FileManager.default.removeItem(at: directoryURL)
     }
 
+    @Test func editedTextPersistsAndPreservesItemState() throws {
+        let store = TodoStore(fileURL: fileURL)
+        store.add("原内容")
+        let item = try #require(store.items.first)
+        store.toggleFocus(item)
+        store.toggle(item)
+        let before = try #require(TodoStore(fileURL: fileURL).items.first)
+        store.updateText("  新内容  ", for: item.id)
+        let reloaded = TodoStore(fileURL: fileURL)
+        var expected = before
+        expected.text = "新内容"
+        #expect(reloaded.items == [expected])
+        reloaded.updateText(" \n ", for: item.id)
+        #expect(TodoStore(fileURL: fileURL).items == [expected])
+    }
+
     @Test func corruptFileIsBackedUpBeforeAnySave() throws {
         let corruptContent = Data("{\"items\": [{\"broken".utf8)
         try corruptContent.write(to: fileURL)

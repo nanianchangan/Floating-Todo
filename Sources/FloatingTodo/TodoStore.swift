@@ -92,6 +92,14 @@ final class TodoStore: ObservableObject {
         save()
     }
 
+    func updateText(_ text: String, for itemID: UUID) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let index = items.firstIndex(where: { $0.id == itemID }),
+              items[index].text != trimmed else { return }
+        items[index].text = trimmed
+        save()
+    }
+
     func toggle(_ item: TodoItem) {
         guard let i = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[i].completedAt = items[i].completedAt == nil ? now() : nil

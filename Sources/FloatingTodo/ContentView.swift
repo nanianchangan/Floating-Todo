@@ -248,6 +248,7 @@ struct ContentView: View {
                     onToggleFocus: { store.toggleFocus(item) },
                     onArchive: { store.archiveItem(item) },
                     onDelete: { store.delete(item) },
+                    onEdit: { store.updateText($0, for: item.id) },
                     onDropPosition: { after in
                         dropPosition = after.map { TodoDropPosition(itemID: item.id, after: $0) }
                     },
@@ -362,6 +363,7 @@ private struct ArchiveRow: View {
 
     @State private var hovering = false
 
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(item.text)
@@ -415,11 +417,15 @@ private struct TodoRow: View {
     let onToggleFocus: () -> Void
     let onArchive: () -> Void
     let onDelete: () -> Void
+    let onEdit: (String) -> Void
     let onDropPosition: (Bool?) -> Void
     let onDrop: (UUID, Bool) -> Void
     let onDragEnd: () -> Void
 
     @State private var hovering = false
+    @State private var editing = false
+    @State private var editText = ""
+    @FocusState private var editFocused: Bool
 
     private var isDone: Bool { item.completedAt != nil }
 
@@ -437,14 +443,31 @@ private struct TodoRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     HStack(spacing: 0) {
-                        Text(item.text)
-                            .strikethrough(isDone)
-                            .foregroundStyle(isDone ? Color.secondary : Color.primary)
-                            .lineLimit(3)
+                        if editing {
+                            TextField("待办内容", text: $editText)
+                                .textFieldStyle(.plain)
+                                .focused($editFocused)
+                                .onSubmit { finishEditing(save: true) }
+                                .onExitCommand { finishEditing(save: false) }
+                                .onChange(of: editFocused) { _, focused in
+                                    if !focused && editing { finishEditing(save: true) }
+                                }
+                        } else {
+                            Text(item.text)
+                                .strikethrough(isDone)
+                                .foregroundStyle(isDone ? Color.secondary : Color.primary)
+                                .lineLimit(3)
+                        }
                         Spacer(minLength: 0)
                     }
                     .overlay {
-                        TodoDragSource(item: item, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
+                        if !editing {
+                            TodoDragSource(item: item, onEdit: {
+                                editText = item.text
+                                editing = true
+                                editFocused = true
+                            }, onPosition: onDropPosition, onDrop: onDrop, onEnd: onDragEnd)
+                        }
                     }
 
                     TimelineView(.periodic(from: .now, by: 30)) { context in
@@ -521,6 +544,13 @@ private struct TodoRow: View {
         }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+    }
+
+    private func finishEditing(save: Bool) {
+        guard editing else { return }
+        editing = false
+        if save { onEdit(editText) }
+        editFocused = false
     }
 }
 
